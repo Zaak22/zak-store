@@ -53,8 +53,36 @@ if [ ! -x "$VENV_PY" ]; then
   exit 1
 fi
 
-"$VENV_PY" -m pip install --quiet --upgrade pip
-"$VENV_PY" -m pip install --quiet -r requirements.txt
+# Generous network settings. pip's default is a 15s read timeout with 5 retries,
+# which is not enough on a slow or restricted link — aiohttp (a pywebpush
+# dependency, and one of the largest wheels here) is usually the first to fail.
+PIP_NET=(--timeout 120 --retries 10)
+
+"$VENV_PY" -m pip install --quiet --upgrade pip "${PIP_NET[@]}"
+
+if ! "$VENV_PY" -m pip install --quiet -r requirements.txt "${PIP_NET[@]}"; then
+  {
+    echo
+    echo "error: dependency install failed."
+    echo
+    echo "If you saw ReadTimeoutError against pypi.org, it is a network problem,"
+    echo "not a problem with the project. Options, in order:"
+    echo
+    echo "  1. Just run ./run.sh again — pip resumes from its cache, so each"
+    echo "     attempt gets further."
+    echo
+    echo "  2. Be even more patient:"
+    echo "       .venv/bin/python -m pip install -r requirements.txt --timeout 300 --retries 20"
+    echo
+    echo "  3. Use a different PyPI mirror if pypi.org is throttled where you are:"
+    echo "       .venv/bin/python -m pip install -r requirements.txt \\"
+    echo "         --index-url https://pypi.tuna.tsinghua.edu.cn/simple"
+    echo
+    echo "  4. Or install on a machine with better connectivity and copy the"
+    echo "     whole backend/.venv directory across (same OS and CPU required)."
+  } >&2
+  exit 1
+fi
 
 [ -f .env ] || { cp .env.example .env; echo "created .env from .env.example"; }
 
