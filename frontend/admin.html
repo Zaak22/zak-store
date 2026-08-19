@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard — Zak Store</title>
+<meta name="theme-color" content="#07070f">
+<meta name="robots" content="noindex, nofollow">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link id="bs-ltr" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="assets/css/app.css?v=12">
+<link rel="stylesheet" href="assets/css/admin.css?v=12">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%99%EF%B8%8F%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+
+<div class="aurora" aria-hidden="true"><span></span><span></span><span></span><i class="grid-veil"></i></div>
+<div class="motes" id="motes" aria-hidden="true"></div>
+
+<!-- ════════════════ login ════════════════ -->
+<section class="auth-wrap" id="authView">
+  <form class="auth-card" id="loginForm">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <span class="brand-mark">⚙️</span>
+      <div>
+        <h1>Zak Store</h1>
+        <p class="muted" style="margin:0">Admin dashboard</p>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="u">Username</label>
+      <input id="u" autocomplete="username" value="admin" required>
+    </div>
+    <div class="field">
+      <label for="p">Password</label>
+      <input id="p" type="password" autocomplete="current-password" required>
+    </div>
+
+    <div class="note" id="loginErr" style="display:none;border-color:var(--bad);color:var(--bad);margin-bottom:14px"></div>
+
+    <button class="btn-glow" style="width:100%" type="submit" id="loginBtn">Sign in</button>
+    <p class="hint" style="text-align:center;margin-top:16px">
+      Credentials come from <code>ADMIN_USERNAME</code> / <code>ADMIN_PASSWORD</code> on the server.
+    </p>
+  </form>
+</section>
+
+<!-- ════════════════ dashboard ════════════════ -->
+<div class="dash" id="dashView" hidden>
+
+  <aside class="side" id="side">
+    <div class="side-brand"><span class="brand-mark" style="width:34px;height:34px;font-size:1rem">⚙️</span> Zak Store</div>
+
+    <button class="side-link on" data-tab="overview"><span class="ico">📊</span> Overview</button>
+    <button class="side-link" data-tab="orders"><span class="ico">🧾</span> Orders <span class="pill" id="pendingPill" hidden>0</span></button>
+    <button class="side-link" data-tab="products"><span class="ico">📦</span> Products</button>
+    <button class="side-link" data-tab="categories"><span class="ico">🗂️</span> Categories</button>
+    <button class="side-link" data-tab="payments"><span class="ico">💳</span> Payment methods</button>
+    <button class="side-link" data-tab="settings"><span class="ico">🎨</span> Site settings</button>
+    <button class="side-link" data-tab="notify"><span class="ico">🔔</span> Notifications</button>
+
+    <div style="margin-top:auto;display:flex;flex-direction:column;gap:6px;padding-top:18px">
+      <a class="side-link" href="index.html" target="_blank" rel="noopener"><span class="ico">🌐</span> View store</a>
+      <button class="side-link" id="logoutBtn"><span class="ico">🚪</span> Sign out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="main-head">
+      <button class="btn-ghost side-toggle" id="sideToggle" aria-label="Menu">☰</button>
+      <h1 id="tabTitle">Overview</h1>
+      <div class="spacer"></div>
+
+      <div class="bell-wrap">
+        <button class="bell" id="bellBtn" aria-label="Notifications" aria-expanded="false">
+          <span class="bell-ico">🔔</span>
+          <span class="bell-count" id="bellCount" hidden>0</span>
+        </button>
+
+        <div class="notif-panel" id="notifPanel" hidden>
+          <div class="notif-head">
+            <b>Notifications</b>
+            <button class="mini" id="markAllRead">Mark all read</button>
+            <button class="mini no" id="clearNotifs">Clear</button>
+          </div>
+          <div class="notif-list" id="notifList"></div>
+        </div>
+      </div>
+
+      <button class="btn-ghost" id="refreshBtn" style="padding:10px 18px;font-size:.85rem">↻ Refresh</button>
+    </div>
+
+    <!-- ─────────── overview ─────────── -->
+    <section class="tab-panel on" data-panel="overview">
+      <div class="kpis" id="kpis"></div>
+
+      <div class="card-box">
+        <h2>📈 Paid revenue · last 7 days</h2>
+        <div id="sparkWrap"></div>
+      </div>
+
+      <div class="card-box">
+        <h2>🕒 Latest orders</h2>
+        <div class="table-wrap"><table class="grid-table">
+          <thead><tr><th>#</th><th>Product</th><th>Package</th><th>Reference</th><th>Total</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody id="recentBody"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ─────────── orders ─────────── -->
+    <section class="tab-panel" data-panel="orders">
+      <div class="card-box">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+          <div class="chips" id="orderFilters">
+            <button class="chip on" data-status="all">All</button>
+            <button class="chip" data-status="pending">Pending</button>
+            <button class="chip" data-status="paid">Paid</button>
+            <button class="chip" data-status="rejected">Rejected</button>
+          </div>
+          <input id="orderSearch" placeholder="Search reference, receipt or product…"
+                 style="flex:1;min-width:200px;padding:10px 16px;border-radius:99px;border:1px solid var(--stroke);background:rgba(0,0,0,.3);color:var(--ink);font:inherit;font-size:.88rem">
+        </div>
+
+        <div class="table-wrap"><table class="grid-table">
+          <thead><tr><th>#</th><th>Product</th><th>Customer</th><th>Reference</th><th>Receipt</th><th>Method</th><th>Total</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+          <tbody id="ordersBody"></tbody>
+        </table></div>
+
+        <div class="pager" id="ordersPager"></div>
+      </div>
+    </section>
+
+    <!-- ─────────── products ─────────── -->
+    <section class="tab-panel" data-panel="products">
+      <div class="card-box">
+        <h2>📦 Products <button class="btn-glow" id="addProduct" style="margin-inline-start:auto;padding:10px 20px;font-size:.85rem">+ New product</button></h2>
+        <div class="table-wrap"><table class="grid-table">
+          <thead><tr><th>Product</th><th>Category</th><th>Packages</th><th>Live</th><th>Order</th><th>Actions</th></tr></thead>
+          <tbody id="productsBody"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ─────────── categories ─────────── -->
+    <section class="tab-panel" data-panel="categories">
+      <div class="card-box">
+        <h2>🗂️ Categories <button class="btn-glow" id="addCategory" style="margin-inline-start:auto;padding:10px 20px;font-size:.85rem">+ New category</button></h2>
+        <div class="table-wrap"><table class="grid-table">
+          <thead><tr><th>Icon</th><th>Arabic</th><th>English</th><th>Slug</th><th>Live</th><th>Order</th><th>Actions</th></tr></thead>
+          <tbody id="categoriesBody"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ─────────── payment methods ─────────── -->
+    <section class="tab-panel" data-panel="payments">
+      <div class="card-box">
+        <h2>💳 Payment methods <button class="btn-glow" id="addMethod" style="margin-inline-start:auto;padding:10px 20px;font-size:.85rem">+ New method</button></h2>
+        <div class="table-wrap"><table class="grid-table">
+          <thead><tr><th>Icon</th><th>Name</th><th>Type</th><th>Value</th><th>Live</th><th>Actions</th></tr></thead>
+          <tbody id="methodsBody"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ─────────── settings ─────────── -->
+    <section class="tab-panel" data-panel="settings">
+      <form id="settingsForm">
+        <div class="card-box">
+          <h2>🏷️ Brand</h2>
+          <div class="form-grid">
+            <div class="field"><label>Store name (Arabic)</label><input name="brand_name_ar"></div>
+            <div class="field"><label>Store name (English)</label><input name="brand_name_en"></div>
+            <div class="field"><label>Logo emoji</label><input name="logo_emoji" maxlength="8"></div>
+            <div class="field"><label>Default language</label>
+              <select name="default_lang"><option value="ar">العربية</option><option value="en">English</option></select>
+            </div>
+            <div class="field"><label>Tagline (Arabic)</label><input name="tagline_ar"></div>
+            <div class="field"><label>Tagline (English)</label><input name="tagline_en"></div>
+          </div>
+        </div>
+
+        <div class="card-box">
+          <h2>🚀 Hero section</h2>
+          <div class="form-grid">
+            <div class="field"><label>Headline (Arabic)</label><input name="hero_title_ar"></div>
+            <div class="field"><label>Headline (English)</label><input name="hero_title_en"></div>
+            <div class="field wide"><label>Subtitle (Arabic)</label><textarea name="hero_subtitle_ar" rows="2"></textarea></div>
+            <div class="field wide"><label>Subtitle (English)</label><textarea name="hero_subtitle_en" rows="2"></textarea></div>
+            <div class="field"><label>Button text (Arabic)</label><input name="hero_cta_ar"></div>
+            <div class="field"><label>Button text (English)</label><input name="hero_cta_en"></div>
+          </div>
+        </div>
+
+        <div class="card-box">
+          <h2>🎨 Theme &amp; currency</h2>
+          <div class="form-grid">
+            <div class="field"><label>Primary colour</label>
+              <div class="color-row"><input type="color" name="color_primary"><input type="text" id="hexPrimary" style="flex:1"></div>
+            </div>
+            <div class="field"><label>Accent colour</label>
+              <div class="color-row"><input type="color" name="color_accent"><input type="text" id="hexAccent" style="flex:1"></div>
+            </div>
+            <div class="field"><label>Background</label>
+              <div class="color-row"><input type="color" name="color_bg"><input type="text" id="hexBg" style="flex:1"></div>
+            </div>
+            <div class="field"><label>Currency (Arabic)</label><input name="currency_ar"></div>
+            <div class="field"><label>Currency (English)</label><input name="currency_en"></div>
+          </div>
+          <div style="display:flex;gap:26px;flex-wrap:wrap;margin-top:8px">
+            <label class="switch"><input type="checkbox" name="animations_enabled"><span class="track"></span> Animations enabled</label>
+            <label class="switch"><input type="checkbox" name="show_stats"><span class="track"></span> Show hero stats</label>
+          </div>
+        </div>
+
+        <div class="card-box">
+          <h2>🧾 Checkout copy</h2>
+          <div class="form-grid">
+            <div class="field wide"><label>Warning note (Arabic)</label><textarea name="checkout_note_ar" rows="2"></textarea></div>
+            <div class="field wide"><label>Warning note (English)</label><textarea name="checkout_note_en" rows="2"></textarea></div>
+            <div class="field"><label>Success title (Arabic)</label><input name="success_title_ar"></div>
+            <div class="field"><label>Success title (English)</label><input name="success_title_en"></div>
+            <div class="field wide"><label>Success message (Arabic)</label><textarea name="success_body_ar" rows="2"></textarea></div>
+            <div class="field wide"><label>Success message (English)</label><textarea name="success_body_en" rows="2"></textarea></div>
+          </div>
+        </div>
+
+        <div class="card-box">
+          <h2>📞 Contact &amp; footer</h2>
+          <div class="form-grid">
+            <div class="field"><label>WhatsApp number</label><input name="support_whatsapp" placeholder="+963900000000"></div>
+            <div class="field"><label>Telegram handle</label><input name="support_telegram" placeholder="@yourstore"></div>
+            <div class="field"><label>Footer text (Arabic)</label><input name="footer_text_ar"></div>
+            <div class="field"><label>Footer text (English)</label><input name="footer_text_en"></div>
+          </div>
+        </div>
+
+        <div class="card-box">
+          <h2>🛠️ Maintenance</h2>
+          <label class="switch" style="margin-bottom:16px"><input type="checkbox" name="maintenance_mode"><span class="track"></span> Maintenance mode (hides the storefront)</label>
+          <div class="form-grid">
+            <div class="field"><label>Message (Arabic)</label><input name="maintenance_msg_ar"></div>
+            <div class="field"><label>Message (English)</label><input name="maintenance_msg_en"></div>
+          </div>
+        </div>
+
+        <div class="card-box">
+          <h2>🔔 Notification template</h2>
+          <div class="form-grid">
+            <div class="field"><label>Title</label><input name="push_title"></div>
+            <div class="field"><label>Body</label><input name="push_body"></div>
+          </div>
+          <p class="hint">Placeholders: <code>{id}</code> <code>{product}</code> <code>{package}</code> <code>{price}</code> <code>{ref}</code> <code>{receipt}</code></p>
+        </div>
+
+        <button class="btn-glow" type="submit" id="saveSettings">💾 Save all settings</button>
+      </form>
+    </section>
+
+    <!-- ─────────── notifications ─────────── -->
+    <section class="tab-panel" data-panel="notify">
+      <div class="card-box">
+        <h2>🔔 Chrome push notifications</h2>
+        <div id="pushState" class="note" style="margin-bottom:16px">Checking…</div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn-glow" id="pushEnable">Enable notifications</button>
+          <button class="btn-ghost" id="pushTest">Send test notification</button>
+          <button class="btn-ghost" id="soundTest">🔊 Test sound</button>
+          <button class="btn-ghost" id="pushDisable">Disable on this device</button>
+        </div>
+
+        <div class="note" style="margin-block-start:18px">
+          <label class="switch" style="margin-block-end:10px">
+            <input type="checkbox" id="soundToggle" checked>
+            <span class="track"><span class="thumb"></span></span>
+            <span>Play a sound when an order arrives while the dashboard is open</span>
+          </label>
+          <p style="margin:0;font-size:.82rem;color:var(--ink-dim);line-height:1.7">
+            <b>Not hearing your desktop notifications?</b> That sound is chosen by your
+            operating system, not by this page — the web Notification API has no
+            working <code>sound</code> option in Chrome. On macOS enable it under
+            <b>System Settings → Notifications → Google Chrome</b> (set the alert style
+            to Banners or Alerts and tick <b>Play sound for notifications</b>). Also make
+            sure Do&nbsp;Not&nbsp;Disturb / Focus is off. The toggle above is separate: it
+            is the in-page chime, which this dashboard controls directly.
+          </p>
+        </div>
+
+        <p class="hint" style="margin-top:16px">
+          Notifications arrive whenever a customer submits an order — even when this tab is closed,
+          as long as Chrome is running. Requires HTTPS (localhost works for testing).
+        </p>
+      </div>
+
+      <div class="card-box">
+        <h2>📱 Subscribed devices</h2>
+        <div class="table-wrap"><table class="grid-table">
+          <thead><tr><th>#</th><th>Device</th><th>Added</th></tr></thead>
+          <tbody id="subsBody"></tbody>
+        </table></div>
+
+
+        <div class="zs-card-box" style="margin-block-start:20px">
+          <h3 style="margin:0 0 4px;font-size:1rem">📧 Email me every order</h3>
+          <p style="margin:0 0 16px;font-size:.84rem;color:var(--ink-faint)">
+            Works with any SMTP provider. Gmail (with an app password), Brevo and
+            Resend all have free tiers big enough for a store this size.
+          </p>
+
+          <label class="switch" style="margin-block-end:14px">
+            <input type="checkbox" id="emailEnabled">
+            <span class="track"><span class="thumb"></span></span>
+            <span>Send an email for every new order</span>
+          </label>
+
+          <div class="form-grid">
+            <div class="field wide">
+              <label>Send order emails to</label>
+              <input id="emailTo" type="email" placeholder="you@example.com">
+            </div>
+            <div class="field wide">
+              <label>Subject line <span style="color:var(--ink-faint);font-weight:400">— {id} {product} {package} {price} {ref} {receipt}</span></label>
+              <input id="emailSubject" placeholder="New order #{id} — {product}">
+            </div>
+            <div class="field wide">
+              <label>Dashboard URL <span style="color:var(--ink-faint);font-weight:400">— makes the email's button link back here</span></label>
+              <input id="dashboardUrl" placeholder="https://your-site.netlify.app/admin.html">
+            </div>
+          </div>
+
+          <div style="display:flex;gap:9px;flex-wrap:wrap;margin-block-start:6px">
+            <button class="btn-glow" id="saveEmail" style="padding:11px 22px;font-size:.87rem">Save email settings</button>
+            <button class="btn-ghost" id="emailTest" style="padding:11px 22px;font-size:.87rem">Send test email</button>
+          </div>
+
+          <div class="note warn" id="smtpState" style="margin-block-start:14px"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ════════════════ modal ════════════════ -->
+<div class="modal-veil" id="modalVeil">
+  <div class="zs-dialog">
+    <div class="modal-head">
+      <h3 id="modalTitle">Edit</h3>
+      <button class="x-btn" id="modalClose" type="button">✕</button>
+    </div>
+    <div id="modalBody"></div>
+    <div class="modal-foot">
+      <button class="btn-ghost" id="modalCancel" type="button">Cancel</button>
+      <button class="btn-glow" id="modalSave" type="button">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="assets/js/config.js?v=12"></script>
+<script src="assets/js/api.js?v=12"></script>
+<script src="assets/js/i18n.js?v=12"></script>
+<script src="assets/js/motion.js?v=12"></script>
+<script src="assets/js/push.js?v=12"></script>
+<script src="assets/js/admin.js?v=12"></script>
+</body>
+</html>

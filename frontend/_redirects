@@ -1,0 +1,8 @@
+# Pretty URLs.
+# Single-segment only. A two-segment rewrite such as /order/:id keeps the URL,
+# so every relative asset path resolves under /order/ and 404s — and order.js
+# reads the id from ?id=, not from the path.
+/store      /index.html     200
+/dashboard  /admin.html     200
+/account    /account.html   200
+/orders     /account.html   200

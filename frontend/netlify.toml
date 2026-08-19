@@ -1,0 +1,38 @@
+# Netlify hosts the FRONTEND ONLY.
+# The FastAPI backend runs elsewhere (see DEPLOY.md) — Netlify Functions
+# support JavaScript/TypeScript and Go, not Python.
+
+[build]
+  publish = "."
+  command = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# The service worker must be served from the root scope, uncached.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Service-Worker-Allowed = "/"
+
+# Code is versioned with ?v= query strings but filenames are stable, so it must
+# revalidate — otherwise a deploy never reaches anyone who already visited.
+[[headers]]
+  for = "/assets/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/assets/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/assets/img/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

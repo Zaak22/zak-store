@@ -1,0 +1,42 @@
+# One-click deploy on Render: https://render.com/deploy
+services:
+  - type: web
+    name: zak-store-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      # Without this the app now refuses to boot rather than exposing a
+      # default admin login — see backend/app/config.py.
+      - key: ENVIRONMENT
+        value: production
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: SECRET_KEY
+        generateValue: true          # Render generates a strong random value
+      - key: ADMIN_USERNAME
+        sync: false                  # set these in the Render dashboard
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: DATABASE_URL
+        sync: false                  # paste your Neon / Netlify DB connection string
+      - key: CORS_ORIGINS
+        sync: false                  # e.g. https://your-site.netlify.app
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+      # Optional: order-notification emails
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
