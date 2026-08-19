@@ -40,6 +40,7 @@ class Config(BaseSettings):
     vapid_private_key: str = ""
     vapid_subject: str = "mailto:admin@example.com"
 
+    # ------------------------------------------------------------------ misc
     @property
     def is_dev(self) -> bool:
         return self.environment.lower() in {"development", "dev", "local"}
@@ -76,8 +77,8 @@ class Config(BaseSettings):
             return self
 
         if self.is_dev:
-            for p in problems:
-                log.warning("insecure config (allowed in development): %s", p)
+            for problem in problems:
+                log.warning("insecure config (allowed in development): %s", problem)
             return self
 
         raise ValueError(
@@ -87,16 +88,47 @@ class Config(BaseSettings):
               "if you are running locally."
         )
 
+    # -------------------------------------------------------------- database
     @property
     def sqlalchemy_url(self) -> str:
-        """Normalise Neon/Heroku style URLs to the psycopg3 driver."""
-        url = self.database_url.strip()
+        """Normalise the URL for psycopg3, repairing whitespace damage.
+
+        Every way a pasted connection string can be corrupted — a trailing
+        newline, a stray space, a hard line break landing inside the password —
+        produces the identical server response: "password authentication
+        failed". The hostname still resolves, so the error blames the password
+        even when the real fault is a paste artifact, and the two are
+        indistinguishable from the logs.
+
+        Whitespace is never legal unencoded anywhere in a URL (a real space
+        must be %20), so removing all of it is safe and repairs the whole class
+        of corruption at once.
+
+        Deliberately does NOT use urlsplit to detect the problem: urlsplit
+        silently discards tab, CR and LF while parsing, so the parsed password
+        looks clean while the raw string still carries the damage — which is
+        exactly how the first attempt at this fix failed.
+        """
+        raw = self.database_url
+        url = "".join(raw.split())
+
+        if url != raw.strip():
+            removed = len(raw.strip()) - len(url)
+            log.warning(
+                "DATABASE_URL contained %d whitespace character(s); removed them. "
+                "This is almost always a stray newline from pasting into a "
+                "multi-line form field, and would otherwise surface as "
+                "'password authentication failed'.",
+                removed,
+            )
+
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql+psycopg://", 1)
         elif url.startswith("postgresql://"):
             url = url.replace("postgresql://", "postgresql+psycopg://", 1)
         return url
 
+    # ----------------------------------------------------------------- other
     @property
     def cors_list(self) -> list[str]:
         raw = self.cors_origins.strip()
