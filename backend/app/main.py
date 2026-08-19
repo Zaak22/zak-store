@@ -11,7 +11,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import config
-from .database import SessionLocal, init_db
+from .database import SessionLocal, describe_url, init_db
 from .routers import admin, customer, public
 from .seed import seed_if_empty
 
@@ -21,6 +21,8 @@ log = logging.getLogger("app")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Logged before connecting, so a failed connection still shows what we tried.
+    log.info("DATABASE_URL → %s", describe_url())
     init_db()
     db = SessionLocal()
     try:

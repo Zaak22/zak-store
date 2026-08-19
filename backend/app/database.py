@@ -81,6 +81,33 @@ if engine.dialect.name == "sqlite":
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
+def describe_url() -> str:
+    """A redacted summary of DATABASE_URL, for startup logs.
+
+    Deliberately never prints the password — only its length and first/last
+    character, which is enough to spot the usual corruptions (a truncated
+    paste, a trailing newline or space, or a stale value) without exposing it.
+    """
+    from urllib.parse import urlsplit
+
+    raw = config.database_url
+    try:
+        parts = urlsplit(raw)
+        pwd = parts.password or ""
+        trailing = ""
+        if raw != raw.strip():
+            trailing = "  ⚠️ VALUE HAS LEADING/TRAILING WHITESPACE"
+        if pwd != pwd.strip():
+            trailing += "  ⚠️ PASSWORD HAS LEADING/TRAILING WHITESPACE"
+        return (
+            f"user={parts.username} host={parts.hostname} db={parts.path.lstrip('/')} "
+            f"pwd_len={len(pwd)} pwd={pwd[:2]}…{pwd[-2:] if len(pwd) > 3 else ''} "
+            f"query={parts.query or '-'}{trailing}"
+        )
+    except ValueError as exc:
+        return f"UNPARSEABLE ({exc}) — almost certainly an un-encoded character in the password"
+
+
 def _sql_default(column) -> str:
     """A literal DEFAULT for backfilling an added column on existing rows.
 
