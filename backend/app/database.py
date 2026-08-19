@@ -4,6 +4,7 @@ from __future__ import annotations
 import datetime as dt
 import decimal
 import logging
+import socket
 from collections.abc import Iterator
 
 from sqlalchemy import create_engine, event, inspect, text
@@ -34,6 +35,35 @@ engine = create_engine(
     # Neon/serverless Postgres drops idle connections; recycle before it bites.
     pool_recycle=280,
 )
+
+if engine.dialect.name.startswith("postgresql"):
+    @event.listens_for(engine, "do_connect")
+    def _prefer_ipv4(_dialect, _conn_rec, _cargs, cparams):
+        """Pin the connection to an IPv4 address.
+
+        Neon publishes both A and AAAA records. Render (and several other
+        hosts) have no IPv6 egress, so libpq walks the AAAA answers, gets
+        "Network is unreachable" on each, and the app never starts.
+
+        `host` is deliberately left intact — Neon routes by TLS SNI, so
+        replacing it with a bare IP would reach the right machine and then be
+        rejected as the wrong project. libpq's `hostaddr` is exactly for this:
+        it sets the address to dial while `host` still drives SNI and cert
+        verification. Resolved per-connection so a changed IP is picked up.
+        """
+        host = cparams.get("host")
+        if not host or cparams.get("hostaddr"):
+            return
+        try:
+            infos = socket.getaddrinfo(
+                host, cparams.get("port") or 5432, socket.AF_INET, socket.SOCK_STREAM
+            )
+        except OSError as exc:
+            log.warning("no IPv4 address for %s (%s); leaving resolution to libpq", host, exc)
+            return
+        if infos:
+            cparams["hostaddr"] = infos[0][4][0]
+
 
 if engine.dialect.name == "sqlite":
     @event.listens_for(engine, "connect")
