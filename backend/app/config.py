@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import unicodedata
 from functools import lru_cache
 
 from pydantic import model_validator
@@ -11,6 +12,31 @@ log = logging.getLogger("config")
 
 INSECURE_SECRETS = {"dev-secret-change-me", "change-me-to-a-long-random-string", ""}
 INSECURE_PASSWORDS = {"admin123", "password", "admin", ""}
+
+
+# Unicode categories that are invisible in a terminal or a form field:
+# Cc control, Cf format (zero-width joiners, BOM, and the bidi marks LRM/RLM),
+# Zs/Zl/Zp separators. None of these are legal unencoded in a URL.
+_INVISIBLE_CATEGORIES = {"Cc", "Cf", "Zs", "Zl", "Zp"}
+
+
+def _strip_invisible(value: str) -> str:
+    """Remove every character that cannot be seen.
+
+    `str.split()` is not enough. It keys off `str.isspace()`, which is True for
+    U+00A0 NBSP but **False** for U+200B ZERO WIDTH SPACE and for the bidi
+    marks U+200E LRM / U+200F RLM. Those three reach libpq intact, and SCRAM's
+    SASLprep (RFC 4013) then either maps them to a literal space or refuses to
+    normalise — either way authentication fails, with no warning and nothing
+    visible on screen to explain it.
+
+    The bidi marks matter here specifically: copying a Latin connection string
+    out of a page that also contains Arabic very easily picks one up.
+    """
+    return "".join(
+        ch for ch in value
+        if not ch.isspace() and unicodedata.category(ch) not in _INVISIBLE_CATEGORIES
+    )
 
 
 class Config(BaseSettings):
@@ -110,15 +136,14 @@ class Config(BaseSettings):
         exactly how the first attempt at this fix failed.
         """
         raw = self.database_url
-        url = "".join(raw.split())
+        url = _strip_invisible(raw)
 
         if url != raw.strip():
             removed = len(raw.strip()) - len(url)
             log.warning(
-                "DATABASE_URL contained %d whitespace character(s); removed them. "
-                "This is almost always a stray newline from pasting into a "
-                "multi-line form field, and would otherwise surface as "
-                "'password authentication failed'.",
+                "DATABASE_URL contained %d invisible character(s); removed them. "
+                "This is almost always a paste artifact, and would otherwise "
+                "surface as 'password authentication failed'.",
                 removed,
             )
 
